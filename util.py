@@ -1,34 +1,20 @@
-
 import numpy as np
-import pandas as pd
-import seaborn as sb
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def create_heatmap(data, xticks_labels):
-    print(xticks_labels)
-    print (data)
+def create_heatmap(data, xtick_labels):
 
-    fig, ax = plt.subplots(figsize=(30, 20))
+    fig, ax = plt.subplots(constrained_layout=True, figsize=(6.4*1.5, 4.8*1.5))  # (6.4, 4.8)
 
-    ax.xaxis.tick_top()
-
-    sns.set(font_scale=1.4)
+    # sns.set(font_scale=1.4)
     res = sns.heatmap(data, annot=False, vmin=0, vmax=1, fmt='.2f', linewidths=0.1, linecolor='grey', cmap='Greys')
 
-    res.set_xticklabels(xticks_labels, fontsize=14, rotation=90)
-    # print([(i + 0.5) for i in range(len(data))])
-    # print(['%d' % (i + 1) for i in range(len(data))])
-    # print(len(data))
-    # print(len(data[0]))
-    # print(len(xticks_labels))
-    # quit()
+    res.set_xticks(np.arange(len(xtick_labels))+0.5)
+    res.set_xticklabels(xtick_labels, rotation=90)
+    ax.xaxis.tick_top()
 
-
-    # plt.yticks(ticks=[(i + 0.5) for i in range(len(data))], labels=['%d' % (i + 1) for i in range(len(data))],
-    #            rotation=0, fontsize=14)
-
-    plt.ylabel('Iteration', fontsize=14)
+    res.set_yticklabels(np.arange(1, len(data)+1), rotation=0)
+    ax.set_ylabel('Iteration')
 
     plt.show()
