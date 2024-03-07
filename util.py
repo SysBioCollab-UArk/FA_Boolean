@@ -47,15 +47,33 @@ def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs):
     avgs = coll.get_averages(normalize=True)
 
     # plots
-    plt.figure(figsize=(6.4*1.5, 4.8*1.5))  # (6.4, 4.8)
-    for sp in sorted(avgs.keys()):
-        plt.plot(avgs[sp], lw=2, label=sp)
-    plt.xticks(ticks=np.arange(0, n_sim_steps+1, 2))
-    plt.ylim((-0.1, 1.1))
-    plt.xlabel('iteration')
-    plt.ylabel('probability ON')
-    plt.legend(ncol=1, bbox_to_anchor=[1, 1], loc=0, labelspacing=0.2)
-    # defaults: labelspacing=0.5, columnspacing=2)
+
+    groups = ['Mutations', 'Upstream FA/BRCA', 'Downstream FA/BRCA-HRR', 'NHEJ', 'Checkpoint Control']
+    species_to_plot = [
+        ['ICL', 'ADD', 'DSB'],
+        ['FANCM', 'FAcore', 'FANCD2I', 'MUS81', 'FANCJBRCA1', 'XPF', 'FAN1'],
+        ['PCNATLS', 'MRN', 'BRCA1', 'ssDNARPA', 'FANCD1N', 'RAD51', 'HRR', 'USP1'],
+        ['KU', 'DNAPK', 'NHEJ'],
+        ['ATR', 'ATM', 'p53', 'CHK1', 'CHK2', 'H2AX', 'CHKREC']
+    ]
+
+    plt.figure(figsize=(6.4*1.5, 4.8*2.25))  # (6.4, 4.8)
+    ax1 = plt.subplot(8, 1, (1,2))
+    ax2 = plt.subplot(8, 2, (5, 9))
+    ax3 = plt.subplot(8, 2, (6, 10))
+    ax4 = plt.subplot(8, 2, (11, 15))
+    ax5 = plt.subplot(8, 2, (12, 16))
+    axes = [ax1, ax2, ax3, ax4, ax5]
+    for ax, group, species in zip(axes, groups, species_to_plot):
+        for sp in species:
+            ax.plot(avgs[sp], lw=2, label=sp)
+        ax.set_title(group)
+        ax.set_xticks(ticks=np.arange(0, n_sim_steps + 1, 2))
+        ax.set_ylim((-0.1, 1.1))
+        ax.set_xlabel('iteration')
+        ax.set_ylabel('probability ON')
+        ncol = 2 if group == 'Checkpoint Control' else 1
+        ax.legend(loc='upper right', labelspacing=0.2, ncol=ncol)
     plt.tight_layout()
 
 

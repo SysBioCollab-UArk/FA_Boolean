@@ -78,7 +78,7 @@ for i in range(3):  # TODO: we should generalize this
 
     # run an asynchronous updating simulation of the BooleanNet model
     n_iterations = 20
-    n_runs = 100
+    n_runs = 1000
     run_FA_Boolean_asynch(model_text, n_iterations, n_runs)
 
     plt.show()
