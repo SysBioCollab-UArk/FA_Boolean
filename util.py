@@ -1,5 +1,7 @@
 import boolean2
 from boolean2 import util
+from pysb.simulator import BngSimulator
+from pysb.importers.boolean import model_from_boolean
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -47,34 +49,20 @@ def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs):
     avgs = coll.get_averages(normalize=True)
 
     # plots
+    plot_timecourses(np.arange(n_sim_steps+1), avgs)
 
-    groups = ['Mutations', 'Upstream FA/BRCA', 'Downstream FA/BRCA-HRR', 'NHEJ', 'Checkpoint Control']
-    species_to_plot = [
-        ['ICL', 'ADD', 'DSB'],
-        ['FANCM', 'FAcore', 'FANCD2I', 'MUS81', 'FANCJBRCA1', 'XPF', 'FAN1'],
-        ['PCNATLS', 'MRN', 'BRCA1', 'ssDNARPA', 'FANCD1N', 'RAD51', 'HRR', 'USP1'],
-        ['KU', 'DNAPK', 'NHEJ'],
-        ['ATR', 'ATM', 'p53', 'CHK1', 'CHK2', 'H2AX', 'CHKREC']
-    ]
 
-    plt.figure(figsize=(6.4*1.5, 4.8*2.25))  # (6.4, 4.8)
-    ax1 = plt.subplot(8, 1, (1,2))
-    ax2 = plt.subplot(8, 2, (5, 9))
-    ax3 = plt.subplot(8, 2, (6, 10))
-    ax4 = plt.subplot(8, 2, (11, 15))
-    ax5 = plt.subplot(8, 2, (12, 16))
-    axes = [ax1, ax2, ax3, ax4, ax5]
-    for ax, group, species in zip(axes, groups, species_to_plot):
-        for sp in species:
-            ax.plot(avgs[sp], lw=2, label=sp)
-        ax.set_title(group)
-        ax.set_xticks(ticks=np.arange(0, n_sim_steps + 1, 2))
-        ax.set_ylim((-0.1, 1.1))
-        ax.set_xlabel('iteration')
-        ax.set_ylabel('probability ON')
-        ncol = 2 if group == 'Checkpoint Control' else 1
-        ax.legend(loc='upper right', labelspacing=0.2, ncol=ncol)
-    plt.tight_layout()
+def run_FA_Boolean_pysb(model_text, t_end, n_runs):
+    model = model_from_boolean(model_text, mode='GSP')
+    sim = BngSimulator(model, verbose=True)
+    tspan = np.linspace(0, t_end, int(round(t_end) * 10 + 1))
+    output = sim.run(tspan=tspan, n_runs=n_runs)
+    avgs = {}
+    for obs in model.observables:
+        if '_True_' in obs.name:
+            print(obs.name)
+            avgs[obs.name[:-9]] = np.mean(np.array(output.observables)[obs.name], axis=0)
+    plot_timecourses(tspan, avgs)
 
 
 def create_heatmap(data, xtick_labels):
@@ -90,3 +78,35 @@ def create_heatmap(data, xtick_labels):
 
     res.set_yticklabels(np.arange(1, len(data)+1), rotation=0)
     ax.set_ylabel('Iteration')
+
+
+def plot_timecourses(tspan, data, xlabel='iteration'):
+
+    groups = ['Mutations', 'Upstream FA/BRCA', 'Downstream FA/BRCA-HRR', 'NHEJ', 'Checkpoint Control']
+
+    species_to_plot = [
+        ['ICL', 'ADD', 'DSB'],
+        ['FANCM', 'FAcore', 'FANCD2I', 'MUS81', 'FANCJBRCA1', 'XPF', 'FAN1'],
+        ['PCNATLS', 'MRN', 'BRCA1', 'ssDNARPA', 'FANCD1N', 'RAD51', 'HRR', 'USP1'],
+        ['KU', 'DNAPK', 'NHEJ'],
+        ['ATR', 'ATM', 'p53', 'CHK1', 'CHK2', 'H2AX', 'CHKREC']
+    ]
+
+    plt.figure(figsize=(6.4 * 1.5, 4.8 * 2.25))  # (6.4, 4.8)
+    ax1 = plt.subplot(8, 1, (1, 2))
+    ax2 = plt.subplot(8, 2, (5, 9))
+    ax3 = plt.subplot(8, 2, (6, 10))
+    ax4 = plt.subplot(8, 2, (11, 15))
+    ax5 = plt.subplot(8, 2, (12, 16))
+    axes = [ax1, ax2, ax3, ax4, ax5]
+    for ax, group, species in zip(axes, groups, species_to_plot):
+        for sp in species:
+            ax.plot(tspan, data[sp], lw=2, label=sp)
+        ax.set_title(group)
+        # ax.set_xticks(ticks=np.arange(0, n_sim_steps + 1, 2))
+        ax.set_ylim((-0.1, 1.1))
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel('probability ON')
+        ncol = 2 if group == 'Checkpoint Control' else 1
+        ax.legend(loc='upper right', labelspacing=0.2, ncol=ncol)
+    plt.tight_layout()

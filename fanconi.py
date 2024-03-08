@@ -78,7 +78,18 @@ for i in range(3):  # TODO: we should generalize this
 
     # run an asynchronous updating simulation of the BooleanNet model
     n_iterations = 20
-    n_runs = 1000
+    n_runs = 100
     run_FA_Boolean_asynch(model_text, n_iterations, n_runs)
 
-    plt.show()
+    # run a PySB general asynchronous (Gillespie) simulation of the BooleanNet model
+    t_end = 20
+    n_runs = 100
+    run_FA_Boolean_pysb(model_text, t_end, n_runs)
+
+    # TODO: figure out how to generate the pysb model just once, since it's a very time consuming step
+    # from pysb.export import export
+    # pysb_model = export(model, 'pysb_flat')
+    # with open('fanconi_pysb.py', 'w') as f:
+    #     f.write(pysb_model)
+
+plt.show()
