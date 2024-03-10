@@ -1,5 +1,6 @@
 import boolean2
 from boolean2 import util
+import pysb
 from pysb.simulator import BngSimulator
 from pysb.importers.boolean import model_from_boolean
 import numpy as np
@@ -7,7 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def run_FA_Boolean_synch(model_text, n_sim_steps):
+def run_FA_Boolean_synch(model_text, n_sim_steps, outfile=None):
     model = boolean2.Model(model_text, mode='sync')
     model.initialize()
     model.iterate(steps=n_sim_steps)
@@ -29,10 +30,10 @@ def run_FA_Boolean_synch(model_text, n_sim_steps):
 
     # create the heatmap for this initial condition
     # create_heatmap(states, nodes)
-    create_heatmap(states, nodes_order)
+    create_heatmap(states, nodes_order, outfile=outfile)
 
 
-def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs):
+def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, outfile=None):
     # for storing trajectories
     coll = util.Collector()
 
@@ -49,23 +50,25 @@ def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs):
     avgs = coll.get_averages(normalize=True)
 
     # plots
-    plot_timecourses(np.arange(n_sim_steps+1), avgs)
+    plot_timecourses(np.arange(n_sim_steps+1), avgs, outfile=outfile)
 
 
-def run_FA_Boolean_pysb(model_text, t_end, n_runs):
-    model = model_from_boolean(model_text, mode='GSP')
-    sim = BngSimulator(model, verbose=True)
+def run_FA_Boolean_pysb(in_model, t_end, n_runs, verbose=True, outfile=None):
+    if isinstance(in_model, pysb.core.Model):
+        model = in_model
+    else:
+        model = model_from_boolean(in_model, mode='GSP')
+    sim = BngSimulator(model, verbose=verbose)
     tspan = np.linspace(0, t_end, int(round(t_end) * 10 + 1))
     output = sim.run(tspan=tspan, n_runs=n_runs)
     avgs = {}
     for obs in model.observables:
         if '_True_' in obs.name:
-            print(obs.name)
             avgs[obs.name[:-9]] = np.mean(np.array(output.observables)[obs.name], axis=0)
-    plot_timecourses(tspan, avgs)
+    plot_timecourses(tspan, avgs, outfile=outfile)
 
 
-def create_heatmap(data, xtick_labels):
+def create_heatmap(data, xtick_labels, outfile=None):
 
     fig, ax = plt.subplots(constrained_layout=True, figsize=(6.4*1.5, 4.8*1.5))  # (6.4, 4.8)
 
@@ -79,8 +82,11 @@ def create_heatmap(data, xtick_labels):
     res.set_yticklabels(np.arange(1, len(data)+1), rotation=0)
     ax.set_ylabel('Iteration')
 
+    if outfile is not None:
+        plt.savefig(outfile, format='pdf')
 
-def plot_timecourses(tspan, data, xlabel='iteration'):
+
+def plot_timecourses(tspan, data, xlabel='iteration', outfile=None):
 
     groups = ['Mutations', 'Upstream FA/BRCA', 'Downstream FA/BRCA-HRR', 'NHEJ', 'Checkpoint Control']
 
@@ -110,3 +116,6 @@ def plot_timecourses(tspan, data, xlabel='iteration'):
         ncol = 2 if group == 'Checkpoint Control' else 1
         ax.legend(loc='upper right', labelspacing=0.2, ncol=ncol)
     plt.tight_layout()
+
+    if outfile is not None:
+        plt.savefig(outfile, format='pdf')
