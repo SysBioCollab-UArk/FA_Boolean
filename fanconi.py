@@ -159,7 +159,7 @@ for cond in CONDITIONS:
 
     # PySB general asynchronous (Gillespie) simulations
     t_end = 30
-    n_runs = 1000
+    n_runs = 100
     run_FA_Boolean_pysb(model_pysb, t_end, n_runs, param_values=param_values, verbose=False,
                         outfile='%s_pysb.pdf' % prefix)
 
