@@ -33,13 +33,14 @@ def run_FA_Boolean_synch(model_text, n_sim_steps, outfile=None):
     create_heatmap(states, nodes_order, outfile=outfile)
 
 
-def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, outfile=None):
+def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, verbose=True, outfile=None):
     # for storing trajectories
     coll = util.Collector()
 
     # run the simulations
     for i in range(n_runs):
-        print(i)
+        if verbose:
+            print(i)
 
         model = boolean2.Model(model_text, mode='async')
         model.initialize()

@@ -1,8 +1,8 @@
-from fanconi_pysb import model as model_pysb
 from util import *
+from fanconi_pysb import model as model_pysb
 import re
 
-# construct the model
+# construct the BooleanNet model
 Initial_conditions = '''
 ICL = False
 FANCM = False
@@ -34,7 +34,6 @@ H2AX = False
 CHKREC = False
 '''
 
-# 1: ICL* = ICL
 Rules = '''
 1: ICL* = ICL and not DSB
 1: FANCM* = ICL and not CHKREC
@@ -71,24 +70,83 @@ Rules = '''
 # ADD = DNA adduct
 # ICL = interstrand crosslink
 
-INITIALS = [
-    ("DSB", True),
-    ("ADD", True),
-    ("ICL", True)
+CONDITIONS = [
+    {'mutations': None, 'initials': [("DSB", True)]},  # FIG 2A
+    {'mutations': None, 'initials': [("ADD", True)]},  # FIG 2B
+    {'mutations': None, 'initials': [("ICL", True)]},  # FIG 2C
+    {'mutations': [("ICL", True)], 'initials': None},  # FIG 3
+    {'mutations': [("FAcore", False)], 'initials': [("ICL", True)]},  # FIG 4A
+    {'mutations': [("FAcore", False), ("ICL", True)], 'initials': None},  # FIG 4B
+    {'mutations': [("FANCD1N", False)], 'initials': [("ICL", True)]},  # FIG 5A
+    {'mutations': [("FANCD1N", False), ("ICL", True)], 'initials': None}  # FIG 5B
 ]
 
-for init in INITIALS:
+for cond in CONDITIONS:
 
-    print('%s = %s' % (init[0], init[1]))
-    prefix = init[0]
+    print(cond)
+    prefix = ""
 
-    # BooleanNet simulations
-    m = re.search(r'%s\s*=\s*\w+' % init[0], Initial_conditions)
-    if m is not None:
-        model_text = Initial_conditions.replace(m.group(0), "%s = %s" % (init[0], str(init[1]))) + Rules
-    else:
-        print("Error: cannot find node '%s' in initial conditions. Please try again." % init[0])
-        quit()
+    model_text = Initial_conditions + Rules  # for BooleanNet model
+    param_values = {}  # for PySB model
+
+    # loop over mutations
+    if cond['mutations'] is not None:
+        prefix = "MUT"
+        for mut in cond['mutations']:
+            prefix += "_%s_%s" % (mut[0], mut[1])
+
+            # === BooleanNet model ===
+
+            # set the initial state of the node
+            m = re.search(r'%s\s*=\s*\w+' % mut[0], model_text)
+            if m is not None:
+                model_text = model_text.replace(m.group(0), "%s = %s" % (mut[0], mut[1]))
+            else:
+                print("Error: can't find node '%s' in the initial conditions." % mut[0])
+                quit()
+
+            # remove the update rule
+            m = re.search(r'\s*\d+:\s*%s\*.*' % mut[0], model_text)
+            if m is not None:
+                model_text = model_text.replace(m.group(0), "")
+            else:
+                print("Error: can't find node '%s' in the rules." % mut[0])
+                quit()
+
+            # === PySB model ===
+
+            # set the initial state of the node
+            param_values['%s_%s_init' % (mut[0], mut[1])] = 1.0
+            param_values['%s_%s_init' % (mut[0], not mut[1])] = 0.0
+
+            # remove (deactivate) the update rule
+            param_values['k_rate_%s' % mut[0]] = 0.0
+
+    # loop over initial conditions
+    if cond['initials'] is not None:
+        prefix += "INIT" if prefix == "" else "_INIT"
+        for init in cond['initials']:
+            prefix += "_%s_%s" % (init[0], init[1])
+
+            # === BooleanNet model ===
+
+            # set the initial state of the node
+            m = re.search(r'%s\s*=\s*\w+' % init[0], model_text)
+            if m is not None:
+                model_text = model_text.replace(m.group(0), "%s = %s" % (init[0], init[1]))
+            else:
+                print("Error: can't find node '%s' in initial conditions." % init[0])
+                quit()
+
+            # === PySB model ===
+
+            # set the initial state of the node
+            param_values['%s_%s_init' % (init[0], init[1])] = 1.0
+            param_values['%s_%s_init' % (init[0], not init[1])] = 0.0
+
+    # if no mutations or initial conditions, this is the base model
+    if prefix == "":
+        prefix = "base"
 
     # synchronous updating
     n_iterations = 30
@@ -97,15 +155,11 @@ for init in INITIALS:
     # asynchronous updating
     n_iterations = 30
     n_runs = 100
-    run_FA_Boolean_asynch(model_text, n_iterations, n_runs, outfile='%s_asynch.pdf' % prefix)
+    run_FA_Boolean_asynch(model_text, n_iterations, n_runs, verbose=False, outfile='%s_asynch.pdf' % prefix)
 
     # PySB general asynchronous (Gillespie) simulations
-    param_values = {
-        '%s_%s_init' % (init[0], init[1]): 1.0,
-        '%s_%s_init' % (init[0], not init[1]): 0.0
-    }
     t_end = 30
-    n_runs = 100
+    n_runs = 1000
     run_FA_Boolean_pysb(model_pysb, t_end, n_runs, param_values=param_values, verbose=False,
                         outfile='%s_pysb.pdf' % prefix)
 
