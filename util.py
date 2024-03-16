@@ -53,14 +53,14 @@ def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, outfile=None):
     plot_timecourses(np.arange(n_sim_steps+1), avgs, outfile=outfile)
 
 
-def run_FA_Boolean_pysb(in_model, t_end, n_runs, verbose=True, outfile=None):
+def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True, outfile=None):
     if isinstance(in_model, pysb.core.Model):
         model = in_model
     else:
         model = model_from_boolean(in_model, mode='GSP')
     sim = BngSimulator(model, verbose=verbose)
     tspan = np.linspace(0, t_end, int(round(t_end) * 10 + 1))
-    output = sim.run(tspan=tspan, n_runs=n_runs)
+    output = sim.run(tspan=tspan, n_runs=n_runs, param_values=param_values)
     avgs = {}
     for obs in model.observables:
         if '_True_' in obs.name:
