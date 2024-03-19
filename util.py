@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-def run_FA_Boolean_synch(model_text, n_sim_steps, outfile=None):
+def run_FA_Boolean_synch(model_text, n_sim_steps, detect_cycles=False, outfile=None):
     model = boolean2.Model(model_text, mode='sync')
     model.initialize()
     model.iterate(steps=n_sim_steps)
@@ -23,8 +23,11 @@ def run_FA_Boolean_synch(model_text, n_sim_steps, outfile=None):
         index.append(nodes.index(node))
 
     # collect the state values for each iteration
+    start, end = util.detect_cycles(model.states) if detect_cycles else (0, len(model.states))
+    # TODO: if detect_cycles = True, make sure a steady state is reached (start, end = 0, 0 if not)
     states = []
-    for state in model.states:
+    # for state in model.states:
+    for state in model.states[start:start+end]:
         # states.append([int(x) for x in state.values()])
         states.append([int(state.values()[index[i]]) for i in range(len(nodes))])  # ordered as Rodriguez et al. (2012)
 
@@ -71,17 +74,19 @@ def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True
 
 def create_heatmap(data, xtick_labels, outfile=None):
 
-    fig, ax = plt.subplots(constrained_layout=True, figsize=(6.4*1.5, 4.8*1.5))  # (6.4, 4.8)
+    fig, ax = plt.subplots(constrained_layout=True, figsize=(6.4*1.5, 1+0.25*len(data)))  # 4.8*1.5))  # (6.4, 4.8)
 
     # sns.set(font_scale=1.4)
-    res = sns.heatmap(data, annot=False, vmin=0, vmax=1, fmt='.2f', linewidths=0.1, linecolor='grey', cmap='Greys')
+    res = sns.heatmap(data, annot=False, vmin=0, vmax=1, fmt='.2f', linewidths=0.1, linecolor='grey', cmap='Greys',
+                      cbar=None)
 
     res.set_xticks(np.arange(len(xtick_labels))+0.5)
     res.set_xticklabels(xtick_labels, rotation=90)
     ax.xaxis.tick_top()
 
+    res.set_yticks(np.arange(1, len(data) + 1)-0.5, rotation=0)
     res.set_yticklabels(np.arange(1, len(data)+1), rotation=0)
-    ax.set_ylabel('Iteration')
+    # ax.set_ylabel('Iteration')
 
     if outfile is not None:
         plt.savefig(outfile, format='pdf')
