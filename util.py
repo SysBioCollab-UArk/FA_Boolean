@@ -84,7 +84,7 @@ def create_heatmap(data, xtick_labels, outfile=None):
     res.set_xticklabels(xtick_labels, rotation=90)
     ax.xaxis.tick_top()
 
-    res.set_yticks(np.arange(1, len(data) + 1)-0.5, rotation=0)
+    res.set_yticks(np.arange(1, len(data) + 1)-0.5)
     res.set_yticklabels(np.arange(1, len(data)+1), rotation=0)
     # ax.set_ylabel('Iteration')
 
