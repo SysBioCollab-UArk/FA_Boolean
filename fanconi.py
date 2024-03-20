@@ -169,6 +169,5 @@ for cond in CONDITIONS:
 # with open('fanconi_pysb.py', 'w') as f:
 #     f.write(pysb_model)
 
-plt.savefig('fanconi_fig', format='pdf')
 
 plt.show()
