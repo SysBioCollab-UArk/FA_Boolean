@@ -70,16 +70,27 @@ Rules = '''
 # ADD = DNA adduct
 # ICL = interstrand crosslink
 
-CONDITIONS = [
-    {'mutations': None, 'initials': [("DSB", True)]},  # FIG 2A
-    {'mutations': None, 'initials': [("ADD", True)]},  # FIG 2B
-    {'mutations': None, 'initials': [("ICL", True)]},  # FIG 2C
-    {'mutations': [("ICL", True)], 'initials': None},  # FIG 3
-    {'mutations': [("FAcore", False)], 'initials': [("ICL", True)]},  # FIG 4A
-    {'mutations': [("FAcore", False), ("ICL", True)], 'initials': None},  # FIG 4B
-    {'mutations': [("FANCD1N", False)], 'initials': [("ICL", True)]},  # FIG 5A
-    {'mutations': [("FANCD1N", False), ("ICL", True)], 'initials': None}  # FIG 5B
-]
+# CONDITIONS = [
+#     {'mutations': None, 'initials': [("DSB", True)]},  # FIG 2A
+#     {'mutations': None, 'initials': [("ADD", True)]},  # FIG 2B
+#     {'mutations': None, 'initials': [("ICL", True)]},  # FIG 2C
+#     {'mutations': [("ICL", True)], 'initials': None},  # FIG 3
+#     {'mutations': [("FAcore", False)], 'initials': [("ICL", True)]},  # FIG 4A
+#     {'mutations': [("FAcore", False), ("ICL", True)], 'initials': None},  # FIG 4B
+#     {'mutations': [("FANCD1N", False)], 'initials': [("ICL", True)]},  # FIG 5A
+#     {'mutations': [("FANCD1N", False), ("ICL", True)], 'initials': None}  # FIG 5B
+# ]
+
+CONDITIONS = []
+for node in re.findall(r'(\w+)\s*=', Initial_conditions):
+    CONDITIONS.append({'mutations': [(node, True)], 'initials': None})
+    CONDITIONS.append({'mutations': [(node, False)], 'initials': None})
+
+SYNCH = True
+ASYNCH = False
+PYSB = False
+
+# TODO: for synch updating, need to find attractors for all 2^28 possible initial conditions
 
 for cond in CONDITIONS:
 
@@ -96,31 +107,35 @@ for cond in CONDITIONS:
             prefix += "_%s_%s" % (mut[0], mut[1])
 
             # === BooleanNet model ===
+            if SYNCH or ASYNCH:
 
-            # set the initial state of the node
-            m = re.search(r'%s\s*=\s*\w+' % mut[0], model_text)
-            if m is not None:
-                model_text = model_text.replace(m.group(0), "%s = %s" % (mut[0], mut[1]))
-            else:
-                print("Error: can't find node '%s' in the initial conditions." % mut[0])
-                quit()
+                # set the initial state of the node
+                # NOTE: to ensure that we match the whole node name and not just a part of it (e.g., BRCA1 vs
+                # FANCJBRCA1), use the ^ character together with the MULTILINE flag
+                pattern = r'^(\s*%s\s*=\s*).*' % mut[0]
+                if re.search(pattern, model_text, flags=re.MULTILINE) is not None:
+                    model_text = re.sub(pattern, r'\1%s' % mut[1], model_text, flags=re.MULTILINE)
+                else:
+                    print("Error: can't find node '%s' in the initial conditions." % mut[0])
+                    quit()
 
-            # remove the update rule
-            m = re.search(r'\s*\d+:\s*%s\*.*' % mut[0], model_text)
-            if m is not None:
-                model_text = model_text.replace(m.group(0), "")
-            else:
-                print("Error: can't find node '%s' in the rules." % mut[0])
-                quit()
+                # remove the update rule
+                pattern = r'\s*\d+:\s*%s\*.*' % mut[0]
+                if re.search(pattern, model_text) is not None:
+                    model_text = re.sub(pattern, '', model_text)
+                else:
+                    print("Error: can't find node '%s' in the rules." % mut[0])
+                    quit()
 
             # === PySB model ===
+            if PYSB:
 
-            # set the initial state of the node
-            param_values['%s_%s_init' % (mut[0], mut[1])] = 1.0
-            param_values['%s_%s_init' % (mut[0], not mut[1])] = 0.0
+                # set the initial state of the node
+                param_values['%s_%s_init' % (mut[0], mut[1])] = 1.0
+                param_values['%s_%s_init' % (mut[0], not mut[1])] = 0.0
 
-            # remove (deactivate) the update rule
-            param_values['k_rate_%s' % mut[0]] = 0.0
+                # remove (deactivate) the update rule
+                param_values['k_rate_%s' % mut[0]] = 0.0
 
     # loop over initial conditions
     if cond['initials'] is not None:
@@ -129,45 +144,52 @@ for cond in CONDITIONS:
             prefix += "_%s_%s" % (init[0], init[1])
 
             # === BooleanNet model ===
+            if SYNCH or ASYNCH:
 
-            # set the initial state of the node
-            m = re.search(r'%s\s*=\s*\w+' % init[0], model_text)
-            if m is not None:
-                model_text = model_text.replace(m.group(0), "%s = %s" % (init[0], init[1]))
-            else:
-                print("Error: can't find node '%s' in initial conditions." % init[0])
-                quit()
+                # set the initial state of the node
+                # NOTE: to ensure that we match the whole node name and not just a part of it (e.g., BRCA1 vs
+                # FANCJBRCA1), use the ^ character together with the MULTILINE flag
+                pattern = r'^(\s*%s\s*=\s*).*' % init[0]
+                # m = re.search(r'%s\s*=\s*\w+' % init[0], model_text)
+                if re.search(pattern, model_text, flags=re.MULTILINE) is not None:
+                    model_text = re.sub(pattern, r'\1%s' % init[1], model_text, flags=re.MULTILINE)
+                else:
+                    print("Error: can't find node '%s' in initial conditions." % init[0])
+                    quit()
 
             # === PySB model ===
+            if PYSB:
 
-            # set the initial state of the node
-            param_values['%s_%s_init' % (init[0], init[1])] = 1.0
-            param_values['%s_%s_init' % (init[0], not init[1])] = 0.0
+                # set the initial state of the node
+                param_values['%s_%s_init' % (init[0], init[1])] = 1.0
+                param_values['%s_%s_init' % (init[0], not init[1])] = 0.0
 
     # if no mutations or initial conditions, this is the base model
     if prefix == "":
         prefix = "base"
 
     # synchronous updating
-    n_iterations = 30
-    run_FA_Boolean_synch(model_text, n_iterations, outfile='%s_synch.pdf' % prefix)
+    if SYNCH:
+        n_iterations = 50
+        run_FA_Boolean_synch(model_text, n_iterations, detect_cycles=True, outfile='%s_synch.pdf' % prefix)
 
     # asynchronous updating
-    n_iterations = 30
-    n_runs = 100
-    run_FA_Boolean_asynch(model_text, n_iterations, n_runs, verbose=False, outfile='%s_asynch.pdf' % prefix)
+    if ASYNCH:
+        n_iterations = 50
+        n_runs = 100
+        run_FA_Boolean_asynch(model_text, n_iterations, n_runs, verbose=False, outfile='%s_asynch.pdf' % prefix)
 
     # PySB general asynchronous (Gillespie) simulations
-    t_end = 30
-    n_runs = 100
-    run_FA_Boolean_pysb(model_pysb, t_end, n_runs, param_values=param_values, verbose=False,
-                        outfile='%s_pysb.pdf' % prefix)
+    if PYSB:
+        t_end = 50
+        n_runs = 100
+        run_FA_Boolean_pysb(model_pysb, t_end, n_runs, param_values=param_values, verbose=False,
+                            outfile='%s_pysb.pdf' % prefix)
 
 # Export model generated by Boolean2Rules so don't have to regenerate it each time (very time-consuming)
 # from pysb.export import export
 # pysb_model = export(model, 'pysb_flat')
 # with open('fanconi_pysb.py', 'w') as f:
 #     f.write(pysb_model)
-
 
 plt.show()
