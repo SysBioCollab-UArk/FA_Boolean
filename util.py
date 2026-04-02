@@ -24,15 +24,13 @@ def run_FA_Boolean_synch(model_text, n_sim_steps, detect_cycles=False, outfile=N
 
     # collect the state values for each iteration
     start, end = util.detect_cycles(model.states) if detect_cycles else (0, len(model.states))
-    # TODO: if detect_cycles = True, make sure a steady state is reached (start, end = 0, 0 if not)
+    if detect_cycles and (start, end) == (0, 0):  # make sure a steady state is reached
+        raise Exception('No cycles detected. Try increasing the number of synchronous updating iterations.')
     states = []
-    # for state in model.states:
     for state in model.states[start:start+end]:
-        # states.append([int(x) for x in state.values()])
         states.append([int(state.values()[index[i]]) for i in range(len(nodes))])  # ordered as Rodriguez et al. (2012)
 
     # create the heatmap for this initial condition
-    # create_heatmap(states, nodes)
     create_heatmap(states, nodes_order, outfile=outfile)
 
 

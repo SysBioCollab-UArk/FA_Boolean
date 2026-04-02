@@ -81,10 +81,14 @@ Rules = '''
 #     {'mutations': [("FANCD1N", False), ("ICL", True)], 'initials': None}  # FIG 5B
 # ]
 
+initials = [("ICL", True)]
+exclude = {'ICL', 'DSB', 'ADD'}  # set
+nodes = list(set(re.findall(r'(\w+)\s*=', Initial_conditions)) - exclude)
+
 CONDITIONS = []
-for node in re.findall(r'(\w+)\s*=', Initial_conditions):
-    CONDITIONS.append({'mutations': [(node, True)], 'initials': None})
-    CONDITIONS.append({'mutations': [(node, False)], 'initials': None})
+for node in nodes:
+    CONDITIONS.append({'mutations': [(node, True)], 'initials': initials})
+    CONDITIONS.append({'mutations': [(node, False)], 'initials': initials})
 
 SYNCH = True
 ASYNCH = False
@@ -170,7 +174,7 @@ for cond in CONDITIONS:
 
     # synchronous updating
     if SYNCH:
-        n_iterations = 50
+        n_iterations = 100
         run_FA_Boolean_synch(model_text, n_iterations, detect_cycles=True, outfile='%s_synch.pdf' % prefix)
 
     # asynchronous updating
