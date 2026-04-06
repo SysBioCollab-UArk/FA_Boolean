@@ -6,6 +6,7 @@ from pysb.importers.boolean import model_from_boolean
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from itertools import cycle
 
 
 def run_FA_Boolean_synch(model_text, n_sim_steps, detect_cycles=False, outfile=None):
@@ -34,7 +35,7 @@ def run_FA_Boolean_synch(model_text, n_sim_steps, detect_cycles=False, outfile=N
     create_heatmap(states, nodes_order, outfile=outfile)
 
 
-def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, verbose=True, outfile=None):
+def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, verbose=True, outfile=None, **kwargs):
     # for storing trajectories
     coll = util.Collector()
 
@@ -55,7 +56,9 @@ def run_FA_Boolean_asynch(model_text, n_sim_steps, n_runs, verbose=True, outfile
     plot_timecourses(np.arange(n_sim_steps+1), avgs, outfile=outfile)
 
 
-def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True, outfile=None):
+def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True, outfile=None, **kwargs):
+
+    # run simulations
     if isinstance(in_model, pysb.core.Model):
         model = in_model
     else:
@@ -67,7 +70,30 @@ def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True
     for obs in model.observables:
         if '_True_' in obs.name:
             avgs[obs.name[:-9]] = np.mean(np.array(output.observables)[obs.name], axis=0)
-    plot_timecourses(tspan, avgs, outfile=outfile)
+    fig, species_list = plot_timecourses(tspan, avgs, outfile=outfile)
+
+    # calculate times that species thresholds are reached
+    species = kwargs.get('species', [])
+    if isinstance(species, str):
+        species = [species]
+    if len(species) > 0:
+        axs = fig.get_axes()
+        sp_thresh = kwargs.get('threshold', 0.01)
+        color_iter = [cycle(plt.rcParams['axes.prop_cycle'].by_key()['color']) for _ in species_list]
+        color = [None] * len(species_list)
+        t_thresh = []
+        for sp in species:
+            ax_idx = next(i for i in range(len(species_list)) if sp in species_list[i])  # which plot
+            max_idx = np.argmax(avgs[sp])  # index the species is at its max
+            # threshold time
+            t_thresh.append(next((t for t, val in zip(tspan[max_idx:], avgs[sp][max_idx:]) if val < sp_thresh), None))
+            if color[ax_idx] is None:  # plot horizontal dashed line at threshold
+                axs[ax_idx].axhline(sp_thresh, ls='--', color='k')
+            color[ax_idx] = next(color_iter[ax_idx])
+            axs[ax_idx].axvline(t_thresh[-1], ls='--', color=color[ax_idx])  # plot vertical dashed lines
+        return t_thresh
+
+    return None
 
 
 def create_heatmap(data, xtick_labels, outfile=None):
@@ -102,7 +128,7 @@ def plot_timecourses(tspan, data, xlabel='iteration', outfile=None):
         ['ATR', 'ATM', 'p53', 'CHK1', 'CHK2', 'H2AX', 'CHKREC']
     ]
 
-    plt.figure(figsize=(6.4 * 1.5, 4.8 * 2.25))  # (6.4, 4.8)
+    fig = plt.figure(figsize=(6.4 * 1.5, 4.8 * 2.25))  # (6.4, 4.8)
     ax1 = plt.subplot(8, 1, (1, 2))
     ax2 = plt.subplot(8, 2, (5, 9))
     ax3 = plt.subplot(8, 2, (6, 10))
@@ -123,3 +149,5 @@ def plot_timecourses(tspan, data, xlabel='iteration', outfile=None):
 
     if outfile is not None:
         plt.savefig(outfile, format='pdf')
+
+    return fig, species_to_plot
