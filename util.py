@@ -86,11 +86,12 @@ def run_FA_Boolean_pysb(in_model, t_end, n_runs, param_values=None, verbose=True
             ax_idx = next(i for i in range(len(species_list)) if sp in species_list[i])  # which plot
             max_idx = np.argmax(avgs[sp])  # index the species is at its max
             # threshold time
-            t_thresh.append(next((t for t, val in zip(tspan[max_idx:], avgs[sp][max_idx:]) if val < sp_thresh), None))
+            t_thresh.append(next((t for t, val in zip(tspan[max_idx:], avgs[sp][max_idx:]) if val < sp_thresh), np.inf))
             if color[ax_idx] is None:  # plot horizontal dashed line at threshold
                 axs[ax_idx].axhline(sp_thresh, ls='--', color='k')
             color[ax_idx] = next(color_iter[ax_idx])
-            axs[ax_idx].axvline(t_thresh[-1], ls='--', color=color[ax_idx])  # plot vertical dashed lines
+            if t_thresh[-1] < np.inf:
+                axs[ax_idx].axvline(t_thresh[-1], ls='--', color=color[ax_idx])  # plot vertical dashed lines
         return t_thresh
 
     return None
